@@ -1,3 +1,5 @@
+import nvdlib
+
 def getDepenTxt(file_path):
     names = []
     versions = []
@@ -22,9 +24,15 @@ def main():
     #n_lines = countLines(file_path)
     if extension == 'txt':
         names, versions = getDepenTxt(file_path)
-        print(names,'\n',versions)
+        #print(names,'\n',versions)
     else:
         print('Extensão não aceita!')
+        return
+    
+    for i in range(len(names)):
+        results = nvdlib.searchCVE(keywordSearch=names[i])
+        for cve in results:
+            print(f"{names[i]}: {cve.id} - {cve.descriptions[0].value} \n")
 
 
 if __name__ == '__main__':
