@@ -1,4 +1,14 @@
 import nvdlib
+from openai import OpenAI
+
+def llmInput(info_file):
+    intro = "Using the following information about the vulnerabilities of these dependencies," \
+        "create a report that explains the problem in an accessible way and makes recommendations to remediate potential threats." \
+        "Remember to also mention if a dependency does not appear in the CVE dataset."
+    with open(info_file, "r") as f:
+        file_content = f.read()
+    full_input = intro + "\n" + file_content
+    return full_input
 
 def getDepenTxt(file_path):
     names = []
@@ -18,7 +28,7 @@ def txtOrjson(file_path):
     return extension
 
 def main():
-    file_path = input("Escreva o caminho para seu arquivo de dependências: ")
+    file_path = input("Enter the path to your dependencie file: ")
     extension = txtOrjson(file_path)
     #content = getContent(file_path)
     #n_lines = countLines(file_path)
@@ -26,13 +36,29 @@ def main():
         names, versions = getDepenTxt(file_path)
         #print(names,'\n',versions)
     else:
-        print('Extensão não aceita!')
+        print('Extension not accepted!')
         return
     
     for i in range(len(names)):
         results = nvdlib.searchCVE(keywordSearch=names[i])
-        for cve in results:
-            print(f"{names[i]}: {cve.id} - {cve.descriptions[0].value} \n")
+        if results:
+            for cve in results:
+                with open("info.txt", "a") as f:
+                    print(f"{names[i]}", file=f)
+                    print(f"CVE ID: {cve.id}", file=f)
+                    print(f"Description: {cve.descriptions[0].value}", file=f)
+                    print(f"Severity: {cve.metrics.cvssMetricV31[0].cvssData.baseSeverity}\n", file=f)
+        else:
+            with open("info.txt", "a") as f:
+                print(f"{names[i]}", file=f)
+                print('CVE not found\n', file=f)
+    
+    client = OpenAI(api_key="")
+    response = client.responses.create(
+        model="gpt-4.1",
+        input = llmInput(info_file="info.txt")
+    )
+    print(response.output_text)
 
 
 if __name__ == '__main__':
