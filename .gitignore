@@ -1,1 +1,6 @@
+.env
+.venv
 taes/
+env/
+venv/
+ENV/
