@@ -48,8 +48,15 @@ def main():
                 with open("info.txt", "a") as f:
                     print(f"{names[i]}", file=f)
                     print(f"CVE ID: {cve.id}", file=f)
-                    print(f"Description: {cve.descriptions[0].value}", file=f)
-                    print(f"Severity: {cve.metrics.cvssMetricV31[0].cvssData.baseSeverity}\n", file=f)
+                    if cve.descriptions:
+                        print(f"Description: {cve.descriptions[0].value}", file=f)
+                    if hasattr(cve, 'metrics') and hasattr(cve.metrics, 'cvssMetricV31'):
+                        metrics = cve.metrics.cvssMetricV31
+                        if metrics and hasattr(metrics[0], 'cvssData'):
+                            print(f"Severity: {metrics[0].cvssData.baseSeverity}\n", file=f)
+                    else:
+                        print("\n", file=f)         
+
         else:
             with open("info.txt", "a") as f:
                 print(f"{names[i]}", file=f)
