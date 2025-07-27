@@ -1,5 +1,6 @@
 import nvdlib
 from openai import OpenAI
+import os
 
 def llmInput(info_file):
     intro = "Using the following information about the vulnerabilities of these dependencies," \
@@ -28,7 +29,8 @@ def txtOrjson(file_path):
     return extension
 
 def main():
-    file_path = input("Enter the path to your dependencie file: ")
+    #file_path = input("Enter the path to your dependencie file: ")
+    file_path = "test.txt"
     extension = txtOrjson(file_path)
     #content = getContent(file_path)
     #n_lines = countLines(file_path)
@@ -53,12 +55,15 @@ def main():
                 print(f"{names[i]}", file=f)
                 print('CVE not found\n', file=f)
     
-    client = OpenAI(api_key="")
+    openai_key = os.getenv("OPENAI_API_KEY")
+    client = OpenAI(api_key=openai_key)
     response = client.responses.create(
         model="gpt-4.1",
         input = llmInput(info_file="info.txt")
     )
-    print(response.output_text)
+    #print(response.output_text)
+    with open("vullTrackerReport.md", "w", encoding="utf-8") as f:
+        f.write(response.output_text)
 
 
 if __name__ == '__main__':
