@@ -69,7 +69,7 @@ def main():
         input = llmInput(info_file="info.txt")
     )
     #print(response.output_text)
-    with open("vullTrackerReport.md", "w", encoding="utf-8") as f:
+    with open("vulnTrackerReport.md", "w", encoding="utf-8") as f:
         f.write(response.output_text)
 
 
