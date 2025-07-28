@@ -7,9 +7,9 @@ def llmInput(info_file):
         "create a report that explains the problem in an accessible way and makes recommendations to remediate potential threats" \
         "considering the context of the project." \
         "Remember to also mention if a dependency does not appear in the CVE dataset."
-    with open(info_file, "r", errors="ignore") as f:
+    with open(info_file, "r") as f:
         vuln_info = f.read()
-    with open("README.md", "r") as f:
+    with open("README.md", "r", errors="ignore") as f:
         project_des = f.read()
     
     full_input = (
