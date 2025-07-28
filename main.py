@@ -7,7 +7,7 @@ def llmInput(info_file):
         "create a report that explains the problem in an accessible way and makes recommendations to remediate potential threats" \
         "considering the context of the project." \
         "Remember to also mention if a dependency does not appear in the CVE dataset."
-    with open(info_file, "r") as f:
+    with open(info_file, "r", errors="ignore") as f:
         vuln_info = f.read()
     with open("README.md", "r") as f:
         project_des = f.read()
@@ -25,11 +25,18 @@ def getDepenTxt(file_path):
     versions = []
     with open(file_path, 'r') as file:
         for line in file:
-            equalPos = line.index('=')
-            names.append(line[:equalPos])
-            version = line[equalPos+2:].strip()
-            versions.append(version)
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '==' in line:
+                name, version = line.split('==', 1)
+                names.append(name.strip())
+                versions.append(version.strip())
+            else:
+                names.append(line)
+                versions.append("N/A")
     return names, versions
+
 
 def txtOrjson(file_path):
     dotPos = file_path.index('.')
