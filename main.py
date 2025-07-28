@@ -30,7 +30,7 @@ def txtOrjson(file_path):
 
 def main():
     #file_path = input("Enter the path to your dependencie file: ")
-    file_path = "test.txt"
+    file_path = "requirements.txt"
     extension = txtOrjson(file_path)
     #content = getContent(file_path)
     #n_lines = countLines(file_path)
