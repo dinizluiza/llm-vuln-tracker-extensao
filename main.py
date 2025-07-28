@@ -4,11 +4,20 @@ import os
 
 def llmInput(info_file):
     intro = "Using the following information about the vulnerabilities of these dependencies," \
-        "create a report that explains the problem in an accessible way and makes recommendations to remediate potential threats." \
+        "create a report that explains the problem in an accessible way and makes recommendations to remediate potential threats" \
+        "considering the context of the project." \
         "Remember to also mention if a dependency does not appear in the CVE dataset."
     with open(info_file, "r") as f:
-        file_content = f.read()
-    full_input = intro + "\n" + file_content
+        vuln_info = f.read()
+    with open("README.md", "r") as f:
+        project_des = f.read()
+    
+    full_input = (
+        intro + "\n" +
+        vuln_info + "\n\n" +
+        "Here's the project description:\n" +
+        project_des
+    )
     return full_input
 
 def getDepenTxt(file_path):
