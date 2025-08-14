@@ -1,3 +1,4 @@
 nvdlib
 openai
 dotenv
+openai==0.28

@@ -77,3 +77,4 @@ Details: `lodash` versions prior to 4.17.21 are vulnerable to Command Injection 
 async
 No vulnerabilities found (OSV)
 
+

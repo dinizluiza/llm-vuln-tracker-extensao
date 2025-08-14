@@ -1,6 +1,6 @@
 import nvdlib
 from dotenv import load_dotenv
-from openai import OpenAI
+#from openai import OpenAI
 import os
 import json
 import requests
@@ -114,35 +114,76 @@ def search_osv(name, version):
     except Exception as e:
         return f"{name}\nError querying OSV API: {e}\n\n"
     
-def llmInput(info_file, file_path):
-    intro = "Using the following information about the vulnerabilities of these dependencies," \
-        "create a report that explains the problem in an accessible way and makes recommendations to remediate potential threats" \
-        "considering the context of the project." \
-        "Remember to also mention if a dependency does not appear in the vulnerability dataset."
-    with open(file_path, "r", encoding="utf-8") as f:
-        dependencies = f.read()
-    with open(info_file, "r", encoding="utf-8") as f:
-        vuln_info = f.read()
-    with open("README.md", "r", errors="ignore") as f:
-        project_des = f.read()
-    
+def llmInput(info_file, file_path, max_lines=50, max_chars=3000):
+    intro = (
+        "Using the following summarized information about the vulnerabilities of these dependencies, "
+        "create a report that explains the problem in an accessible way and makes recommendations to remediate potential threats "
+        "considering the context of the project. "
+        "Mention if a dependency does not appear in the vulnerability dataset."
+    )
+
+    def summarize(path, max_lines, max_chars):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                if len(lines) > max_lines:
+                    lines = lines[:max_lines]
+                    lines.append("\n...[truncated]...\n")
+                content = "".join(lines)
+                if len(content) > max_chars:
+                    content = content[:max_chars] + "\n...[truncated]...\n"
+                return content
+        except Exception:
+            return "[Could not read file]"
+
+    dependencies = summarize(file_path, max_lines, max_chars)
+    vuln_info = summarize(info_file, max_lines * 2, max_chars * 2)
+    project_des = summarize("README.md", max_lines, max_chars)
+
     full_input = (
-        intro + "\n" +
-        "Here are the dependencies to be analysed:\n" +
-        dependencies + "\n\n" +
-        "Here's the information about the vulnerabilities of the dependencies searched on the APIs:\n" +
-        vuln_info + "\n\n" +
-        "And here's the project description:\n" +
-        project_des +
-        "For each dependency, provide:\n" \
-        "1. a brief summary of the vulnerabilities found\n" \
-        "2. the impact of the vulnerabilities in this project\n" \
+        intro + "\n"
+        "Here are the dependencies to be analysed (summarized):\n"
+        + dependencies + "\n\n"
+        "Here's the summarized information about the vulnerabilities of the dependencies:\n"
+        + vuln_info + "\n\n"
+        "And here's the (summarized) project description:\n"
+        + project_des + "\n"
+        "For each dependency, provide:\n"
+        "1. a brief summary of the vulnerabilities found\n"
+        "2. the impact of the vulnerabilities in this project\n"
         "3. recommendations for remediation (that can be upgrades, patches or alternative libraries suggestions)."
     )
     return full_input
 
+# def llmInput(info_file, file_path):
+#     intro = "Using the following information about the vulnerabilities of these dependencies," \
+#         "create a report that explains the problem in an accessible way and makes recommendations to remediate potential threats" \
+#         "considering the context of the project." \
+#         "Remember to also mention if a dependency does not appear in the vulnerability dataset."
+#     with open(file_path, "r", encoding="utf-8") as f:
+#         dependencies = f.read()
+#     with open(info_file, "r", encoding="utf-8") as f:
+#         vuln_info = f.read()
+#     with open("README.md", "r", errors="ignore") as f:
+#         project_des = f.read()
+    
+#     full_input = (
+#         intro + "\n" +
+#         "Here are the dependencies to be analysed:\n" +
+#         dependencies + "\n\n" +
+#         "Here's the information about the vulnerabilities of the dependencies searched on the APIs:\n" +
+#         vuln_info + "\n\n" +
+#         "And here's the project description:\n" +
+#         project_des +
+#         "For each dependency, provide:\n" \
+#         "1. a brief summary of the vulnerabilities found\n" \
+#         "2. the impact of the vulnerabilities in this project\n" \
+#         "3. recommendations for remediation (that can be upgrades, patches or alternative libraries suggestions)."
+#     )
+#     return full_input
+
 def main():
-    file_path = "dependencies/requirementsTest.txt"
+    file_path = "dependencies/package.json"
 
     extension = extension_type(file_path)
     cache_file, info_file = files_type(extension)
@@ -199,6 +240,27 @@ def main():
 
     # with open("vulnTrackerReport.md", "w", encoding="utf-8") as f:
     #     f.write(response.output_text)
+
+    import openai
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
+    if not openrouter_key:
+        print("OPENROUTER_API_KEY não encontrado no ambiente.")
+        return
+
+    openai.api_key = openrouter_key
+    openai.api_base = "https://openrouter.ai/api/v1"
+
+    print("[LLM] Generating report with OpenRouter.ai...")
+
+    response = openai.ChatCompletion.create(
+        model="tngtech/deepseek-r1t2-chimera:free",  # ou outro modelo disponível no OpenRouter
+        messages=[
+            {"role": "user", "content": llmInput(info_file, file_path)}
+        ]
+    )
+
+    with open("vulnTrackerReport.md", "w", encoding="utf-8") as f:
+        f.write(response['choices'][0]['message']['content'])
 
     print("Execution finished.")
 
