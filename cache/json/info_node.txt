@@ -1,0 +1,79 @@
+@testing-library/jest-dom
+No vulnerabilities found (OSV)
+
+
+@testing-library/react
+No vulnerabilities found (OSV)
+
+
+@testing-library/user-event
+No vulnerabilities found (OSV)
+
+
+axios
+No vulnerabilities found (OSV)
+
+
+react
+No vulnerabilities found (OSV)
+
+
+react-dom
+No vulnerabilities found (OSV)
+
+
+react-router-dom
+No vulnerabilities found (OSV)
+
+
+react-scripts
+No vulnerabilities found (OSV)
+
+
+web-vitals
+No vulnerabilities found (OSV)
+
+
+lodash
+OSV ID: GHSA-p6mc-m468-83gw
+Summary: Prototype Pollution in lodash
+Details: Versions of lodash prior to 4.17.19 are vulnerable to Prototype Pollution. The functions `pick`, `set`, `setWith`, `update`, `updateWith`, and `zipObjectDeep` allow a malicious user to modify the prototype of Object if the property identifiers are user-supplied. Being affected by this issue requires manipulating objects based on user-provided property values or arrays.
+
+This vulnerability causes the addition or modification of an existing property that will exist on all objects and may lead to Denial of Service or Code Execution under specific circumstances.
+
+OSV ID: GHSA-29mw-wpgm-hmr9
+Summary: Regular Expression Denial of Service (ReDoS) in lodash
+Details: All versions of package lodash prior to 4.17.21 are vulnerable to Regular Expression Denial of Service (ReDoS) via the `toNumber`, `trim` and `trimEnd` functions. 
+
+Steps to reproduce (provided by reporter Liyuan Chen):
+```js
+var lo = require('lodash');
+
+function build_blank(n) {
+    var ret = "1"
+    for (var i = 0; i < n; i++) {
+        ret += " "
+    }
+    return ret + "1";
+}
+var s = build_blank(50000) var time0 = Date.now();
+lo.trim(s) 
+var time_cost0 = Date.now() - time0;
+console.log("time_cost0: " + time_cost0);
+var time1 = Date.now();
+lo.toNumber(s) var time_cost1 = Date.now() - time1;
+console.log("time_cost1: " + time_cost1);
+var time2 = Date.now();
+lo.trimEnd(s);
+var time_cost2 = Date.now() - time2;
+console.log("time_cost2: " + time_cost2);
+```
+
+OSV ID: GHSA-35jh-r3h4-6jhm
+Summary: Command Injection in lodash
+Details: `lodash` versions prior to 4.17.21 are vulnerable to Command Injection via the template function.
+
+
+async
+No vulnerabilities found (OSV)
+

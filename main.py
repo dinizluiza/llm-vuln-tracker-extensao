@@ -3,30 +3,123 @@ from dotenv import load_dotenv
 from openai import OpenAI
 import os
 import json
+import requests
 
 load_dotenv()
 
-CACHE_FILE = "cache.json"
-REQUIREMENTS_FILE = "requirementsTest.txt"
+CACHE_FILE = "cache/txt/cache.json"
+INFO_FILE = "cache/txt/info.txt"
 
-def load_cache():
+CACHE_FILE_NODE = "cache/json/cache_node.json"
+INFO_FILE_NODE = "cache/json/info_node.txt"
+
+def extension_type(file_path):
+    dotPos = file_path.index('.')
+    extension = file_path[dotPos+1:]
+    return extension
+
+def files_type(extension):
+    if extension == 'txt':
+        return CACHE_FILE, INFO_FILE
+    elif extension == 'json':
+        return CACHE_FILE_NODE, INFO_FILE_NODE
+    else:
+        print('Extension not accepted!')
+        return
+
+def getDepenTxt(file_path):
+    names = []
+    versions = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '==' in line:
+                name, version = line.split('==', 1)
+                names.append(name.strip())
+                versions.append(version.strip())
+            else:
+                names.append(line)
+                versions.append("N/A")
+    return names, versions
+
+def getDepenJson(file_path):
+    with open(file_path, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+    names = []
+    versions = []
+    for dep_type in ["dependencies", "devDependencies"]:
+        deps = data.get(dep_type, {})
+        for name, version in deps.items():
+            names.append(name)
+            versions.append(version)
+    return names, versions
+
+def load_cache(cache_file):
     """Carrega o cache de resultados já obtidos."""
-    if os.path.exists(CACHE_FILE):
-        with open(CACHE_FILE, "r", encoding="utf-8") as f:
+    if os.path.exists(cache_file):
+        with open(cache_file, "r", encoding="utf-8") as f:
             return json.load(f)
     return {}
 
-def save_cache(cache):
+def save_cache(cache, cache_file):
     """Salva o cache atualizado no disco."""
-    with open(CACHE_FILE, "w", encoding="utf-8") as f:
+    with open(cache_file, "w", encoding="utf-8") as f:
         json.dump(cache, f, indent=4, ensure_ascii=False)
 
-def llmInput(info_file):
+def search_nvd(name):
+    results = nvdlib.searchCVE(keywordSearch=name)
+    output_str = f"{name}\n"
+    if results:
+        for cve in results:
+            output_str += f"CVE ID: {cve.id}\n"
+            if cve.descriptions:
+                output_str += f"Description: {cve.descriptions[0].value}\n"
+            if hasattr(cve, 'metrics') and hasattr(cve.metrics, 'cvssMetricV31'):
+                metrics = cve.metrics.cvssMetricV31
+                if metrics and hasattr(metrics[0], 'cvssData'):
+                    output_str += f"Severity: {metrics[0].cvssData.baseSeverity}\n"
+            output_str += "\n"
+    else:
+        output_str += "CVE not found\n\n"
+    return output_str
+
+def search_osv(name, version):
+    url = "https://api.osv.dev/v1/query"
+    payload = {
+        "package": {
+            "name": name,
+            "ecosystem": "npm"
+        }
+    }
+    if version and version != "N/A":
+        payload["version"] = version
+    try:
+        resp = requests.post(url, json=payload, timeout=10)
+        output_str = f"{name}\n"
+        if resp.status_code == 200:
+            data = resp.json()
+            vulns = data.get("vulns", [])
+            if vulns:
+                for vuln in vulns:
+                    output_str += f"OSV ID: {vuln.get('id')}\n"
+                    output_str += f"Summary: {vuln.get('summary','')}\n"
+                    output_str += f"Details: {vuln.get('details','')}\n\n"
+            else:
+                output_str += "No vulnerabilities found (OSV)\n\n"
+        else:
+            output_str += "Error querying OSV API\n\n"
+        return output_str
+    except Exception as e:
+        return f"{name}\nError querying OSV API: {e}\n\n"
+    
+def llmInput(info_file, file_path):
     intro = "Using the following information about the vulnerabilities of these dependencies," \
         "create a report that explains the problem in an accessible way and makes recommendations to remediate potential threats" \
         "considering the context of the project." \
-        "Remember to also mention if a dependency does not appear in the CVE dataset."
-    with open(REQUIREMENTS_FILE, "r", encoding="utf-8") as f:
+        "Remember to also mention if a dependency does not appear in the vulnerability dataset."
+    with open(file_path, "r", encoding="utf-8") as f:
         dependencies = f.read()
     with open(info_file, "r", encoding="utf-8") as f:
         vuln_info = f.read()
@@ -48,89 +141,64 @@ def llmInput(info_file):
     )
     return full_input
 
-def getDepenTxt(file_path):
-    names = []
-    versions = []
-    with open(file_path, 'r') as file:
-        for line in file:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            if '==' in line:
-                name, version = line.split('==', 1)
-                names.append(name.strip())
-                versions.append(version.strip())
-            else:
-                names.append(line)
-                versions.append("N/A")
-    return names, versions
-
-def txtOrjson(file_path):
-    dotPos = file_path.index('.')
-    extension = file_path[dotPos+1:]
-    return extension
-
 def main():
-    file_path = REQUIREMENTS_FILE
-    extension = txtOrjson(file_path)
+    file_path = "dependencies/requirementsTest.txt"
+
+    extension = extension_type(file_path)
+    cache_file, info_file = files_type(extension)
 
     # Limpa info.txt no início
-    open("info.txt", "w", encoding="utf-8").close()
+    open(info_file, "w", encoding="utf-8").close()
 
     if extension == 'txt':
         names, versions = getDepenTxt(file_path)
+    elif extension == 'json':
+        names, versions = getDepenJson(file_path)
     else:
         print('Extension not accepted!')
         return
 
     # Carregar cache
-    cache = load_cache()
+    cache = load_cache(cache_file)
 
-    for name in names:
-        if name in cache:
+    for name, version in zip(names, versions):
+        cache_key = f"{name}@{version}"
+        if cache_key in cache:
             print(f"[CACHE] {name} already on cache, reusing result.")
-            with open("info.txt", "a", encoding="utf-8") as f:
-                f.write(cache[name] + "\n")
+            with open(info_file, "a", encoding="utf-8") as f:
+                f.write(cache[cache_key] + "\n")
             continue
 
-        print(f"[NVD] Searching for vulnerabilities in {name}...")
-        results = nvdlib.searchCVE(keywordSearch=name)
-
-        output_str = f"{name}\n"
-        if results:
-            for cve in results:
-                output_str += f"CVE ID: {cve.id}\n"
-                if cve.descriptions:
-                    output_str += f"Description: {cve.descriptions[0].value}\n"
-                if hasattr(cve, 'metrics') and hasattr(cve.metrics, 'cvssMetricV31'):
-                    metrics = cve.metrics.cvssMetricV31
-                    if metrics and hasattr(metrics[0], 'cvssData'):
-                        output_str += f"Severity: {metrics[0].cvssData.baseSeverity}\n"
-                output_str += "\n"
+        if extension == 'txt':
+            print(f"[NVD] Searching for vulnerabilities in {name}...")
+            output_str = search_nvd(name)
+        elif extension == 'json':
+            print(f"[OSV] Searching for vulnerabilities in {name}...")
+            output_str = search_osv(name, version)
         else:
-            output_str += "CVE not found\n\n"
+            output_str = f"{name}\nUnknown project type\n\n"
 
         # Salvar no arquivo info.txt
-        with open("info.txt", "a", encoding="utf-8") as f:
+        with open(info_file, "a", encoding="utf-8") as f:
             f.write(output_str)
 
         # Guardar no cache
-        cache[name] = output_str
+        cache[cache_key] = output_str
 
     # Salvar cache atualizado
-    save_cache(cache)
+    save_cache(cache, cache_file)
 
-    # Gerar relatório com LLM
-    openai_key = os.getenv("OPENAI_API_KEY")
-    client = OpenAI(api_key=openai_key)
-    print("[LLM] Generating report with LLM...")
-    response = client.responses.create(
-        model="gpt-4.1-nano",
-        input=llmInput(info_file="info.txt")
-    )
+    # # Gerar relatório com LLM
+    # openai_key = os.getenv("OPENAI_API_KEY")
+    # client = OpenAI(api_key=openai_key)
+    # print("[LLM] Generating report with LLM...")
+    # response = client.responses.create(
+    #     model="gpt-4.1",
+    #     input=llmInput(info_file, file_path)
+    # )
 
-    with open("vulnTrackerReport.md", "w", encoding="utf-8") as f:
-        f.write(response.output_text)
+    # with open("vulnTrackerReport.md", "w", encoding="utf-8") as f:
+    #     f.write(response.output_text)
 
     print("Execution finished.")
 
