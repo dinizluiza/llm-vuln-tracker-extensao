@@ -253,7 +253,7 @@ def main():
     print("[LLM] Generating report with OpenRouter.ai...")
 
     response = openai.ChatCompletion.create(
-        model="tngtech/deepseek-r1t2-chimera:free",  # ou outro modelo disponível no OpenRouter
+        model="tngtech/deepseek-r1t2-chimera:free",
         messages=[
             {"role": "user", "content": llmInput(info_file, file_path)}
         ]
