@@ -182,8 +182,8 @@ def llmInput(info_file, file_path, max_lines=50, max_chars=3000):
 #     )
 #     return full_input
 
-def main():
-    file_path = "dependencies/package.json"
+def main(file_path):
+    #file_path = "dependencies/package.json"
 
     extension = extension_type(file_path)
     cache_file, info_file = files_type(extension)
@@ -264,5 +264,5 @@ def main():
 
     print("Execution finished.")
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()

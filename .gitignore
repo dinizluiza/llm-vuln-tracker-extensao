@@ -1,6 +1,2 @@
 .env
-.venv
-taes/
-env/
-venv/
-ENV/
+__pycache__/
